@@ -1,11 +1,31 @@
-load.libraries <- c('gdata', 'plm', 'ggplot2')
+load.libraries <- c('gdata', 'ggplot2', 'xlsx', 'MNP')
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependencies = TRUE)
 sapply(load.libraries, require, character = TRUE)
 
+# Import databases to merge
+data <- read.xlsx('database-whr17.xlsx', 1)
+ginibase <- read.xlsx('database-ginimultisources.xlsx', 1)
+# Merge databases
+finaldata <- merge(data, ginibase, by.x=c('Country', 'Year'), by.y=c('Country', 'Year'))
+# Select columns to keep
+finaldata <- finaldata[, c(1:2, 4:5, 10)]
+# Remove duplicates
+duplicates <- which(duplicated(finaldata))
+finaldata<-finaldata[-duplicates,]
 
-data <- read.xls('database-whr17.xlsx')
-ginibase <- read.xls('database-ginimultisources.xlsx')
+co2base <- read.csv('database-co2.csv')
+finaldata <- merge(finaldata, co2base, by.x=c('Country', 'Year'), by.y=c('Entity', 'Year'))
+finaldata <- rename.vars(finaldata, c('COâ...emissions.per.capita..per.year...tonnes.per.year.', 'GINIR'), c('CO2', 'GINI'))
+finaldata <- remove.vars(finaldata, 'Code')
+
+write.xlsx(finaldata, file = 'database-whr17-v2.xlsx', col.names = TRUE, row.names = FALSE)
+
+# Multi-nominal probit
+mnp <- mnp(RLadder ~ GDP + GINI + CO2, finaldata)
+summary(mnp)
+
+
 
 lm <- lm(Ladder2 ~ GDP + GINI, data2)
 summary(lm)
