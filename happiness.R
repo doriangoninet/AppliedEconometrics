@@ -1,4 +1,4 @@
-load.libraries <- c('gdata', 'ggplot2', 'xlsx', 'MNP', 'psych')
+load.libraries <- c('gdata', 'ggplot2', 'xlsx', 'MNP', 'psych', 'foreign', 'nnet', 'reshape2')
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependencies = TRUE)
 sapply(load.libraries, require, character = TRUE)
@@ -42,32 +42,39 @@ write.xlsx(finaldata, file = 'database-whr17-v5.xlsx', col.names = TRUE, row.nam
 # Load final database
 finaldata <- read.xlsx('database-whr17-v5.xlsx', 1)
 
-# Statistics
+finaldata$RLadder <- as.factor(finaldata$RLadder)
+finaldata$Continent <- as.factor(finaldata$Continent)
+
+# Descriptive Statistics
 summary(finaldata)
 describe(finaldata)
-
-
-# Multi-nominal probit
-mnp <- mnp(RLadder ~ GDP + GINI + CO2, finaldata)
-summary(mnp)
+summary(finaldata$RLadder)
+summary(finaldata$Continent)
 
 
 
-lm <- lm(Ladder2 ~ GDP + GINI, data2)
-summary(lm)
+plot(RLadder ~ GDP, finaldata)
+abline(lm(RLadder ~ GDP, finaldata))
 
-plot(Ladder2 ~ GDP, data2)
-abline(lm(Ladder2 ~ GDP, data2))
 
-ggplot(data = data2, x=GDP, y=Ladder2)
+ggplot(finaldata) +
+  geom_histogram(mapping = aes(x = Continent, fill = RLadder), stat = "count", binwidth = 5) +
+  scale_fill_grey()
 
-summary(data)
-summary(data$year)
-dim(data$year)
-str(data)
 
-data2 <- na.exclude(data)
-summary(data2$Country)
+# Multinomial Logistic Regression - from the nnet package
+## Choosen because it does not require the data to be reshaped
 
-glm <- glm(Ladder2 ~ GDP + GINI, data2, family=binomial(link = "probit"))
-Ladder2 <-data2$Ladder*0.1
+### First, we choose the level of our outcome that we wish to use as our baseline
+finaldata$RLadder2 <- relevel(finaldata$RLadder, ref ="3")
+
+### Run our model
+test <- multinom(RLadder2 ~ GDP + GINI + CO2 + Continent + CPW, data = finaldata)
+summary(test)
+
+### Calculate P-Values
+z <- summary(test)$coefficients/summary(test)$standard.errors
+p <- (1 - pnorm(abs(z), 0, 1)) *2
+p
+
+head(fitted(test))
