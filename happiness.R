@@ -36,11 +36,21 @@ finaldata <- read.xlsx('database-whr17-v4.xlsx', 1)
 finaldata <- na.omit(finaldata)
 write.xlsx(finaldata, file = 'database-whr17-v5.xlsx', col.names = TRUE, row.names = FALSE)
 
+# merge Continent3-Continent4 and Continent5-Continent6
+# remove RLadder3 and RLadder8
+finaldata <- read.xlsx('database-whr17-v5.xlsx', 1)
+finaldata <- subset(finaldata, RLadder != 3)
+finaldata <- subset(finaldata, RLadder != 8)
+finaldata$Continent[finaldata$Continent==3] <- 4
+finaldata$Continent[finaldata$Continent==5] <- 6
+
+
+write.xlsx(finaldata, file = 'database-whr17-v6.xlsx', col.names = TRUE, row.names = FALSE)
 
 
 
 # Load final database
-finaldata <- read.xlsx('database-whr17-v5.xlsx', 1)
+finaldata <- read.xlsx('database-whr17-v6.xlsx', 1)
 
 finaldata$RLadder <- as.factor(finaldata$RLadder)
 finaldata$Continent <- as.factor(finaldata$Continent)
@@ -66,7 +76,7 @@ ggplot(finaldata) +
 ## Choosen because it does not require the data to be reshaped
 
 ### First, we choose the level of our outcome that we wish to use as our baseline
-finaldata$RLadder2 <- relevel(finaldata$RLadder, ref ="3")
+finaldata$RLadder2 <- relevel(finaldata$RLadder, ref ="4")
 
 ### Run our model
 test <- multinom(RLadder2 ~ GDP + GINI + CO2 + Continent + CPW, data = finaldata)
