@@ -1,0 +1,66 @@
+---
+title: "Oral Presentation 3"
+subtitle: "Estimation Results and Interpretation"
+author: "D. Goninet, T. Lezoualc'h, V. Martre"
+date: "February 12th, 2018"
+
+output:
+  beamer_presentation:
+    slide_level: 1
+    toc: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Economic Question
+
+\center
+
+**In what extent happiness is linked to GDP per capita?**
+
+
+| Variables                   | Description                 |
+|-----------------------------|-----------------------------|
+| Happiness                   | Between 4 and 7 in our data |
+| $log$(GDP per capita)       |                             |
+| GINI Index                  |                             |
+| CO2 emissions               |                             |
+| Continent                   | 5 groups: Europe,           |
+| Numb. of children per woman |                             |
+
+
+# A simple model
+## Enoncer le modèle (écrire son équation)
+## Le justifier
+## Montrer les résultats (table des coefficients)
+## Donner les interprétations (effet marginal, élasticités, etc.)
+## Relier les conclusions à la problématique
+
+<!--
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Slide with Bullets
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+## Slide with R Output
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```
+-->

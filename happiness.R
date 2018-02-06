@@ -1,4 +1,4 @@
-load.libraries <- c('gdata', 'ggplot2', 'xlsx', 'MNP', 'psych', 'foreign', 'nnet', 'reshape2')
+load.libraries <- c('gdata', 'ggplot2', 'xlsx', 'MNP', 'psych', 'foreign', 'nnet', 'reshape2', 'xtable')
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependencies = TRUE)
 sapply(load.libraries, require, character = TRUE)
@@ -47,6 +47,17 @@ finaldata$Continent[finaldata$Continent==5] <- 6
 
 write.xlsx(finaldata, file = 'database-whr17-v6.xlsx', col.names = TRUE, row.names = FALSE)
 
+# V8, logGDP + GD¨P
+finaldata <- read.xlsx('database-whr17-v6.xlsx', 1)
+finaldata <- rename.vars(finaldata, 'GDP', 'logGDP')
+GDP <- exp(finaldata$logGDP)
+finaldata <- data.frame(finaldata, GDP)
+
+
+
+
+write.xlsx(finaldata, file = 'database-whr17-v7.xlsx', col.names = TRUE, row.names = FALSE)
+
 
 
 # Load final database
@@ -56,10 +67,12 @@ finaldata$RLadder <- as.factor(finaldata$RLadder)
 finaldata$Continent <- as.factor(finaldata$Continent)
 
 # Descriptive Statistics
-summary(finaldata)
+s <- summary(finaldata)
 describe(finaldata)
 summary(finaldata$RLadder)
 summary(finaldata$Continent)
+
+xtable(x = s)
 
 
 
@@ -82,9 +95,13 @@ finaldata$RLadder2 <- relevel(finaldata$RLadder, ref ="4")
 test <- multinom(RLadder2 ~ GDP + GINI + CO2 + Continent + CPW, data = finaldata)
 summary(test)
 
+test <- multinom(RLadder2 ~ logGDP, finaldata)
+test <- multinom(RLadder2 ~ GDP, finaldata)
+
 ### Calculate P-Values
 z <- summary(test)$coefficients/summary(test)$standard.errors
 p <- (1 - pnorm(abs(z), 0, 1)) *2
 p
 
 head(fitted(test))
+xtable(summary(test)$coefficients)
