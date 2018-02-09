@@ -3,105 +3,164 @@ install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependencies = TRUE)
 sapply(load.libraries, require, character = TRUE)
 
-# Import databases to merge
-data <- read.xlsx('database-whr17.xlsx', 1)
-ginibase <- read.xlsx('database-ginimultisources.xlsx', 1)
-# Merge databases
-finaldata <- merge(data, ginibase, by.x=c('Country', 'Year'), by.y=c('Country', 'Year'))
-# Select columns to keep
-finaldata <- finaldata[, c(1:2, 4:5, 10)]
-# Remove duplicates
-duplicates <- which(duplicated(finaldata))
-finaldata <- finaldata[-duplicates,]
-
-co2base <- read.csv('database-co2.csv')
-finaldata <- merge(finaldata, co2base, by.x=c('Country', 'Year'), by.y=c('Entity', 'Year'))
-finaldata <- rename.vars(finaldata, c('COâ...emissions.per.capita..per.year...tonnes.per.year.', 'GINIR'), c('CO2', 'GINI'))
-finaldata <- remove.vars(finaldata, 'Code')
-
-write.xlsx(finaldata, file = 'database-whr17-v2.xlsx', col.names = TRUE, row.names = FALSE)
 
 
-
-cpwbase <- read.csv('database-cpw.csv')
-
-finaldata <- merge(finaldata, cpwbase, by.x=c('Country', 'Year'), by.y=c('Entity', 'Year'))
-finaldata <- finaldata[, c(1:7, 9)]
-finaldata <- rename.vars(finaldata, c('Estimates..1950...2015..Demographic.Indicators...Total.fertility..live.births.per.woman...live.births.per.woman.'), c('CPW'))
-
-write.xlsx(finaldata, file = 'database-whr17-v4.xlsx', col.names = TRUE, row.names = FALSE)
-
-# Remove the NAs
-finaldata <- read.xlsx('database-whr17-v4.xlsx', 1)
-finaldata <- na.omit(finaldata)
-write.xlsx(finaldata, file = 'database-whr17-v5.xlsx', col.names = TRUE, row.names = FALSE)
-
-# merge Continent3-Continent4 and Continent5-Continent6
-# remove RLadder3 and RLadder8
-finaldata <- read.xlsx('database-whr17-v5.xlsx', 1)
-finaldata <- subset(finaldata, RLadder != 3)
-finaldata <- subset(finaldata, RLadder != 8)
-finaldata$Continent[finaldata$Continent==3] <- 4
-finaldata$Continent[finaldata$Continent==5] <- 6
+finaldata <- read.xlsx('database-whr17-v7.xlsx', 1)
 
 
-write.xlsx(finaldata, file = 'database-whr17-v6.xlsx', col.names = TRUE, row.names = FALSE)
-
-# V8, logGDP + GD¨P
-finaldata <- read.xlsx('database-whr17-v6.xlsx', 1)
-finaldata <- rename.vars(finaldata, 'GDP', 'logGDP')
-GDP <- exp(finaldata$logGDP)
-finaldata <- data.frame(finaldata, GDP)
-
-
-
-
-write.xlsx(finaldata, file = 'database-whr17-v7.xlsx', col.names = TRUE, row.names = FALSE)
-
-
-
-# Load final database
-finaldata <- read.xlsx('database-whr17-v6.xlsx', 1)
-
-finaldata$RLadder <- as.factor(finaldata$RLadder)
-finaldata$Continent <- as.factor(finaldata$Continent)
 
 # Descriptive Statistics
-s <- summary(finaldata)
+summary(finaldata)
 describe(finaldata)
 summary(finaldata$RLadder)
 summary(finaldata$Continent)
 
-xtable(x = s)
-
-
-
+# First Plots
 plot(RLadder ~ GDP, finaldata)
 abline(lm(RLadder ~ GDP, finaldata))
-
 
 ggplot(finaldata) +
   geom_histogram(mapping = aes(x = Continent, fill = RLadder), stat = "count", binwidth = 5) +
   scale_fill_grey()
 
 
+
 # Multinomial Logistic Regression - from the nnet package
 ## Choosen because it does not require the data to be reshaped
-
 ### First, we choose the level of our outcome that we wish to use as our baseline
 finaldata$RLadder2 <- relevel(finaldata$RLadder, ref ="4")
 
-### Run our model
-test <- multinom(RLadder2 ~ GDP + GINI + CO2 + Continent + CPW, data = finaldata)
-summary(test)
-
-test <- multinom(RLadder2 ~ logGDP, finaldata)
-test <- multinom(RLadder2 ~ GDP, finaldata)
+### Run our models
+test1a <- multinom(RLadder2 ~ logGDP, data = finaldata)
+test1b <- multinom(RLadder2 ~ GDP, data = finaldata)
+test2 <- multinom(RLadder2 ~ logGDP + GINI + CO2 + Continent + CPW, data = finaldata)
 
 ### Calculate P-Values
-z <- summary(test)$coefficients/summary(test)$standard.errors
+z <- summary(test1a)$coefficients/summary(test1a)$standard.errors
 p <- (1 - pnorm(abs(z), 0, 1)) *2
 p
 
+### Predicting obs.
 head(fitted(test))
-xtable(summary(test)$coefficients)
+
+
+### entre 7 et 8, la proba majoritaire passe du goupe 4 au groupe 5
+### proba de passer dans le groupe 5 c'est avec GDP = 7,89, 2670$
+### proba de passer dans le groupe 6 c'est avec GDP = 9,51, 13494$
+### proba de passer dans le groupe 7 c'est avec GDP = 
+### proba de passer dans le groupe 4, c'est ace GDP = 
+
+coef <- summary(test1a)$coefficients
+
+gr56 <- (coef[2,1] - coef[1,1])/(coef[1,2] - coef[2,2])
+gr67 <- (coef[3,1] - coef[2,1])/(coef[2,2] - coef[3,2])
+gr45 <- - coef[1,1]/coef[1,2]
+
+f4 <- function(x) 1/(1+(exp(coef[1,1] + coef[1,2]*x)+exp(coef[2,1] + coef[2,2]*x)+exp(coef[3,1] + coef[3,2]*x)))
+f5 <- function(x) exp(coef[1,1] + coef[1,2]*x)/(1+(exp(coef[1,1] + coef[1,2]*x)+exp(coef[2,1] + coef[2,2]*x)+exp(coef[3,1] + coef[3,2]*x)))
+f6 <- function(x) exp(coef[2,1] + coef[2,2]*x)/(1+(exp(coef[1,1] + coef[1,2]*x)+exp(coef[2,1] + coef[2,2]*x)+exp(coef[3,1] + coef[3,2]*x)))
+f7 <- function(x) exp(coef[3,1] + coef[3,2]*x)/(1+(exp(coef[1,1] + coef[1,2]*x)+exp(coef[2,1] + coef[2,2]*x)+exp(coef[3,1] + coef[3,2]*x)))
+
+
+x <- seq(6, 12, length.out = 10000)
+dl <- data.frame(x, f4(x), f5(x), f6(x), f7(x))
+
+ggplot(dl) +
+  geom_line(aes(x, f4.x.), linetype = "dotted", color = "gray70", size = 1) +
+  geom_line(aes(x, f5.x.), linetype = "twodash", color = "gray60", size = 1) +
+  geom_line(aes(x, f6.x.), linetype =  "longdash", color = "gray40", size = 1) +
+  geom_line(aes(x, f7.x.), linetype = "solid", color = "gray20", size = 1) +
+  geom_vline(xintercept = gr56) +
+  geom_vline(xintercept = gr67) +
+  geom_vline(xintercept = gr45) +
+  ylab("Prob. to reach a specific level of happiness") +
+  xlab("log of GDP per capita") +
+  theme(legend.position="top")
+
+mg <- gr45
+
+a <- coef[1,1] + coef[1,2]*mg
+b <- coef[2,1] + coef[2,2]*mg
+c <- coef[3,1] + coef[3,2]*mg
+
+d <- exp(a)/(1+(exp(a)+exp(b)+exp(c)))
+e <- exp(b)/(1+(exp(a)+exp(b)+exp(c)))
+f <- exp(c)/(1+(exp(a)+exp(b)+exp(c)))
+g <- 1 - d - e - f
+
+c(g, d, e, f)
+
+
+##
+coef2 <- summary(test2)$coefficients
+
+a2 <- 0
+a3 <- mean(finaldata$GINI)
+a4 <- mean(finaldata$CO2)
+a5 <- 0
+a6 <- 0
+a7 <- 0
+a8 <- 0
+a9 <- mean(finaldata$CPW)
+
+logGDPgr56 <- (  (coef2[2,1] - coef2[1,1])    + 
+                 (coef2[2,2] - coef2[1,2])*a2 + 
+                 (coef2[2,3] - coef2[1,3])*a3 + 
+                 (coef2[2,4] - coef2[1,4])*a4 + 
+                 (coef2[2,5] - coef2[1,5])*a5 + 
+                 (coef2[2,6] - coef2[1,6])*a6 + 
+                 (coef2[2,7] - coef2[1,7])*a7 + 
+                 (coef2[2,8] - coef2[1,8])*a8 + 
+                 (coef2[2,9] - coef2[1,9])*a9    ) / (coef2[1,2] - coef2[2,2])
+logGDPgr67 <- (  (coef2[3,1] - coef2[2,1])    + 
+                 (coef2[3,2] - coef2[2,2])*a2 + 
+                 (coef2[3,3] - coef2[2,3])*a3 + 
+                 (coef2[3,4] - coef2[2,4])*a4 + 
+                 (coef2[3,5] - coef2[2,5])*a5 + 
+                 (coef2[3,6] - coef2[2,6])*a6 + 
+                 (coef2[3,7] - coef2[2,7])*a7 + 
+                 (coef2[3,8] - coef2[2,8])*a8 + 
+                 (coef2[3,9] - coef2[2,9])*a9    ) / (coef2[2,2] - coef2[3,2])
+logGDPgr45 <- (  (- coef2[1,1])    + 
+                 (- coef2[1,2])*a2 + 
+                 (- coef2[1,3])*a3 + 
+                 (- coef2[1,4])*a4 + 
+                 (- coef2[1,5])*a5 + 
+                 (- coef2[1,6])*a6 + 
+                 (- coef2[1,7])*a7 + 
+                 (- coef2[1,8])*a8 + 
+                 (- coef2[1,9])*a9    ) / (coef2[1,2])
+
+
+mg <- logGDPgr45
+
+a <- coef2[1,1] + coef2[1,2]*mg + coef2[1,3]*a3 + coef2[1,4]*a4 + coef2[1,9]*a9
+b <- coef2[2,1] + coef2[2,2]*mg + coef2[2,3]*a3 + coef2[2,4]*a4 + coef2[2,9]*a9
+c <- coef2[3,1] + coef2[3,2]*mg + coef2[3,3]*a3 + coef2[3,4]*a4 + coef2[3,9]*a9
+
+d <- exp(a)/(1+(exp(a)+exp(b)+exp(c)))
+e <- exp(b)/(1+(exp(a)+exp(b)+exp(c)))
+f <- exp(c)/(1+(exp(a)+exp(b)+exp(c)))
+g <- 1 - d - e - f
+
+c(g, d, e, f)
+
+fb4 <- function(x) 1/(1+(exp(coef2[1,1] + coef2[1,2]*x + coef2[1,3]*a3 + coef2[1,4]*a4 + coef2[1,9]*a9)+exp(coef2[2,1] + coef2[2,2]*x + coef2[2,3]*a3 + coef2[2,4]*a4 + coef2[2,9]*a9)+exp(coef2[3,1] + coef2[3,2]*x + coef2[3,3]*a3 + coef2[3,4]*a4 + coef2[3,9]*a9)))
+fb5 <- function(x) exp(coef2[1,1] + coef2[1,2]*x + coef2[1,3]*a3 + coef2[1,4]*a4 + coef2[1,9]*a9)/(1+(exp(coef2[1,1] + coef2[1,2]*x + coef2[1,3]*a3 + coef2[1,4]*a4 + coef2[1,9]*a9)+exp(coef2[2,1] + coef2[2,2]*x + coef2[2,3]*a3 + coef2[2,4]*a4 + coef2[2,9]*a9)+exp(coef2[3,1] + coef2[3,2]*x + coef2[3,3]*a3 + coef2[3,4]*a4 + coef2[3,9]*a9)))
+fb6 <- function(x) exp(coef2[2,1] + coef2[2,2]*x + coef2[2,3]*a3 + coef2[2,4]*a4 + coef2[2,9]*a9)/(1+(exp(coef2[1,1] + coef2[1,2]*x + coef2[1,3]*a3 + coef2[1,4]*a4 + coef2[1,9]*a9)+exp(coef2[2,1] + coef2[2,2]*x + coef2[2,3]*a3 + coef2[2,4]*a4 + coef2[2,9]*a9)+exp(coef2[3,1] + coef2[3,2]*x + coef2[3,3]*a3 + coef2[3,4]*a4 + coef2[3,9]*a9)))
+fb7 <- function(x) exp(coef2[3,1] + coef2[3,2]*x + coef2[3,3]*a3 + coef2[3,4]*a4 + coef2[3,9]*a9)/(1+(exp(coef2[1,1] + coef2[1,2]*x + coef2[1,3]*a3 + coef2[1,4]*a4 + coef2[1,9]*a9)+exp(coef2[2,1] + coef2[2,2]*x + coef2[2,3]*a3 + coef2[2,4]*a4 + coef2[2,9]*a9)+exp(coef2[3,1] + coef2[3,2]*x + coef2[3,3]*a3 + coef2[3,4]*a4 + coef2[3,9]*a9)))
+
+x <- seq(6, 12, length.out = 10000)
+dl2 <- data.frame(x, fb4(x), fb5(x), fb6(x), fb7(x))
+
+ggplot(dl2) +
+  geom_line(aes(x, fb4.x.), linetype = "dotted", color = "gray70", size = 1) +
+  geom_line(aes(x, fb5.x.), linetype = "twodash", color = "gray60", size = 1) +
+  geom_line(aes(x, fb6.x.), linetype =  "longdash", color = "gray40", size = 1) +
+  geom_line(aes(x, fb7.x.), linetype = "solid", color = "gray20", size = 1) +
+  geom_vline(xintercept = logGDPgr56) +
+  geom_vline(xintercept = logGDPgr67) +
+  geom_vline(xintercept = logGDPgr45) +
+  ylab("Prob. to reach a specific level of happiness") +
+  xlab("log of GDP per capita") +
+  theme(legend.position="top")

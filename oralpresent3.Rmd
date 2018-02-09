@@ -13,6 +13,20 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+
+load.libraries <- c('gdata', 'ggplot2', 'xlsx', 'MNP', 'psych', 'foreign', 'nnet', 'reshape2', 'xtable', 'knitr')
+install.lib <- load.libraries[!load.libraries %in% installed.packages()]
+for(libs in install.lib) install.packages(libs, dependencies = TRUE)
+sapply(load.libraries, require, character = TRUE)
+
+finaldata <- read.xlsx('database-whr17-v6.xlsx', 1)
+finaldata$RLadder <- as.factor(finaldata$RLadder)
+finaldata$Continent <- as.factor(finaldata$Continent)
+finaldata$RLadder2 <- relevel(finaldata$RLadder, ref ="4")
+
+test1 <- multinom(RLadder2 ~ GDP, finaldata)
+test2 <- multinom(RLadder2 ~ GDP + GINI + CO2 + Continent + CPW, data = finaldata)
+
 ```
 
 # Economic Question
@@ -22,20 +36,48 @@ knitr::opts_chunk$set(echo = FALSE)
 **In what extent happiness is linked to GDP per capita?**
 
 
-| Variables                   | Description                 |
-|-----------------------------|-----------------------------|
-| Happiness                   | Between 4 and 7 in our data |
-| $log$(GDP per capita)       |                             |
-| GINI Index                  |                             |
-| CO2 emissions               |                             |
-| Continent                   | 5 groups: Europe,           |
-| Numb. of children per woman |                             |
+| Variables                   | Description                                     |
+|-----------------------------|-------------------------------------------------|
+| ```RLadder```               | Level of Happiness: between 4 and 7 in our data |
+| ```GDP```                | The log of GDP per capita                       |
+| ```GINI```                  | The GINI Index                                  |
+| ```CO2 emissions```         | CO2 emissions                                   |
+| ```Continent```             | 5 groups: Europe,                               |
+| ```CPW```                   | Numb. of children per woman                     |
 
 
 # A simple model
-## Enoncer le modèle (écrire son équation)
-## Le justifier
-## Montrer les résultats (table des coefficients)
+
+\center
+
+```RLadder``` $= \beta_{0} + \beta_{1} \cdot$ ```logGDP```
+
+
+```{r 1.coefftable, results="asis"}
+t1 <- xtable(summary(test1)$coefficients)
+print(t1, type="latex", comment = FALSE)
+```
+
+$ln \frac{P(RLadder = 5)}{P(RLadder = 4)} = b_{10} + b_{11}GDP$
+
+$ln \frac{P(RLadder = 6)}{P(RLadder = 4)} = b_{20} + b_{21}GDP$
+
+$ln \frac{P(RLadder = 7)}{P(RLadder = 4)} = b_{30} + b_{31}GDP$
+
+# Multinomial Logit Model
+
+\center
+
+```RLadder``` $= \beta_{0} + \beta_{1} \cdot$ ```GDP``` + $\beta_{2} \cdot$ ```GINI``` + $\beta_{3} \cdot$ ```CO2``` + $\beta_{4} \cdot$ ```Continent``` + $\beta_{5} \cdot$ ```CPW```
+
+```{r 2.coefftable, results="asis"}
+t2 <- xtable(summary(test2)$coefficients, auto = TRUE)
+digits(t2) <- 2
+print(t2, type="latex", comment = FALSE)
+```
+
+$ln \frac{P(RLadder = 5)}{P(RLadder = 4)} = b_{10} + b_{11}GDP + b_{21}GINI + b_{31}CO2 + b_{41}(Continent = 1) + ... + b{71}CPW$
+
 ## Donner les interprétations (effet marginal, élasticités, etc.)
 ## Relier les conclusions à la problématique
 
