@@ -1,4 +1,4 @@
-load.libraries <- c('gdata', 'ggplot2', 'xlsx', 'MNP', 'psych', 'foreign', 'nnet', 'reshape2', 'xtable')
+load.libraries <- c('gdata', 'ggplot2', 'xlsx', 'MNP', 'psych', 'foreign', 'nnet', 'reshape2', 'xtable', 'XML')
 install.lib <- load.libraries[!load.libraries %in% installed.packages()]
 for(libs in install.lib) install.packages(libs, dependencies = TRUE)
 sapply(load.libraries, require, character = TRUE)
@@ -60,3 +60,55 @@ finaldata$RLadder <- as.factor(finaldata$RLadder)
 finaldata$Continent <- as.factor(finaldata$Continent)
 ## Writing new dataset
 write.xlsx(finaldata, file = 'database-whr17-v7.xlsx', col.names = TRUE, row.names = FALSE)
+
+
+# Real V8-9
+## Add of a new variable:
+### Europe = 0 : not being in Europe
+### Europe = 1 : being in West Europe
+### Europe = 2 : being in East Europe
+### Continent = 1 : Europe
+### Continent = 2 : Africa
+### Continent = 3 : 
+### Continent = 4 : America
+### Continent = 5 : 
+### Continent = 6 : Asia
+### Continent = 7 : Middle East
+finaldata <- read.xlsx('database-whr17-v8.xlsx', 1)
+finaldata <- finaldata[, c(1:8, 10)]
+
+### Continent = 1 : West Europe
+### Continent = 2 : East Europe
+### Continent = 3 : Africa
+### Continent = 4 : Middle East
+### Continent = 5 : Asia
+### Continent = 6 : America
+NContinent <- 0
+finaldata <- cbind(finaldata, NContinent)
+finaldata[finaldata$Europe == 1, which(colnames(finaldata)=="NContinent")] <- 1
+finaldata[finaldata$Europe == 2, which(colnames(finaldata)=="NContinent")] <- 2
+finaldata[finaldata$Continent == 2, which(colnames(finaldata)=="NContinent")] <- 3
+finaldata[finaldata$Continent == 7, which(colnames(finaldata)=="NContinent")] <- 4
+finaldata[finaldata$Continent == 6, which(colnames(finaldata)=="NContinent")] <- 5
+finaldata[finaldata$Continent == 4, which(colnames(finaldata)=="NContinent")] <- 6
+
+finaldata$Continent <- finaldata$NContinent
+finaldata <- finaldata[, c(1:8)]
+finaldata$Continent <- as.factor(finaldata$Continent)
+
+WestEurope <- 0
+EastEurope <- 0
+Africa <- 0
+MiddleEast <- 0
+AsiaOceania <- 0
+America <- 0
+finaldata <- cbind(finaldata, WestEurope, EastEurope, Africa, MiddleEast, AsiaOceania, America)
+finaldata[finaldata$Continent == 1, which(colnames(finaldata)=="WestEurope")] <- 1
+finaldata[finaldata$Continent == 2, which(colnames(finaldata)=="EastEurope")] <- 1
+finaldata[finaldata$Continent == 3, which(colnames(finaldata)=="Africa")] <- 1
+finaldata[finaldata$Continent == 4, which(colnames(finaldata)=="MiddleEast")] <- 1
+finaldata[finaldata$Continent == 5, which(colnames(finaldata)=="AsiaOceania")] <- 1
+finaldata[finaldata$Continent == 6, which(colnames(finaldata)=="America")] <- 1
+finaldata <- finaldata[, c(1:6, 8:14)]
+
+write.xlsx(finaldata, file = 'database-whr17-v9.xlsx', col.names = TRUE, row.names = FALSE)
